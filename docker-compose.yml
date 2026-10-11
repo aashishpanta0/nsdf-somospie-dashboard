@@ -1,0 +1,24 @@
+services:
+  nsdf-somospie:
+    platform: ${SOMOSPIE_PLATFORM:-linux/amd64}
+    build: .
+    image: ${SOMOSPIE_IMAGE:-ghcr.io/aashishpanta0/nsdf-somospie-dashboard:latest}
+    init: true
+    restart: unless-stopped
+    ports:
+      - "${SOMOSPIE_BIND_ADDRESS:-127.0.0.1}:${SOMOSPIE_PORT:-11657}:${SOMOSPIE_PORT:-11657}"
+    environment:
+      BOKEH_ALLOW_WS_ORIGIN: "${SOMOSPIE_ALLOW_WS_ORIGIN:-*}"
+      VISUS_CACHE: /var/cache/visus
+    command:
+      - --address
+      - "${SOMOSPIE_LISTEN_ADDRESS:-0.0.0.0}"
+      - --port
+      - "${SOMOSPIE_PORT:-11657}"
+      - --args
+      - "${SOMOSPIE_DATASET:?Set SOMOSPIE_DATASET in .env (see .env.example)}"
+    volumes:
+      - nsdf-somospie-cache:/var/cache/visus
+
+volumes:
+  nsdf-somospie-cache:
