@@ -11,7 +11,7 @@ you do not need to clone this repository or install Python.
 | Image | `ghcr.io/aashishpanta0/nsdf-somospie-dashboard` ([package page](https://github.com/aashishpanta0/nsdf-somospie-dashboard/pkgs/container/nsdf-somospie-dashboard)) |
 | Tags | `latest` (newest build of `main`) and `X.Y.Z` (releases) |
 | Platform | `linux/amd64` (runs under emulation on Apple Silicon and other ARM hosts) |
-| Port | `11657`, passed at run time |
+| Port | `11657` |
 | Dashboard URL | `http://<host>:11657/somospie` |
 
 ## Run with Docker
@@ -19,28 +19,42 @@ you do not need to clone this repository or install Python.
 You need [Docker](https://docs.docker.com/get-docker/).
 
 ```bash
-docker run -d --name nsdf-somospie -p 11657:11657 \
-  ghcr.io/aashishpanta0/nsdf-somospie-dashboard:latest \
-  --address 0.0.0.0 --port 11657 --args 'https://s3.us-east-1.wasabisys.com/scientistcloud/utk/nsdf_somospie/conus_30m_terrain/CONUS_30m_Terrain_Parameters.idx?access_key=Y69B9WJPYXDQBM4DE8LL&secret_key=LJEz1AUsvTW6uNJc67NNgfD3IfNYrIY54zps6PWU&endpoint_url=https://s3.us-east-1.wasabisys.com&cached=arco'
+docker run -d --name somospie -p 11657:11657 ghcr.io/aashishpanta0/nsdf-somospie-dashboard:latest
 ```
 
 Open <http://localhost:11657/somospie>. The first load can take a minute while
-data is fetched. Stop and remove it with `docker rm -f nsdf-somospie`.
+data is fetched. Stop and remove it with `docker rm -f somospie`.
 
-### How the container starts
+## Defaults and how to change them
 
-The image runs `python -m panel serve somospie`, and everything after the image
-name is appended to that command. The image does not fix an address or port, so
-pass them every time:
+The image saves a default for everything, so it runs with no arguments. Pass
+only what you want to change; everything else keeps its default.
 
-| Argument | Meaning |
-| --- | --- |
-| `--address 0.0.0.0` | Listen on all interfaces, so traffic from outside the container reaches the server |
-| `--port 11657` | Port to listen on; publish the same one with `-p 11657:11657`. Without it, Panel uses `5006` |
-| `--args <dataset>` | Dataset to open; must come last. With no arguments at all, the image opens the CONUS 30 m terrain parameters on Wasabi S3 (public read-only keys) |
+| Setting | Default | Change it with |
+| --- | --- | --- |
+| Address | `0.0.0.0` | `--address <ip>`, or `-e ADDRESS=<ip>` |
+| Port | `11657` | `--port <port>`, or `-e PORT=<port>` |
+| Dataset | the CONUS 30 m terrain parameters on Wasabi S3 (public read-only keys) | `--args <dataset>`, the dataset as the first argument, or `-e DATASET=<dataset>` |
 
-Other [`panel serve` options](https://panel.holoviz.org/how_to/server/commandline.html)
-go before `--args`, for example `--num-procs 4` or `--prefix /somospie`.
+Arguments go after the image name. For example, to serve on port 9000 (publish
+the same port with `-p`):
+
+```bash
+docker run -d --name somospie -p 9000:9000 ghcr.io/aashishpanta0/nsdf-somospie-dashboard:latest --port 9000
+```
+
+A dataset can be an OpenVisus `.idx` URL or path, or a JSON scene list. For local
+files, mount their directory at `/data`:
+
+```bash
+docker run -d --name somospie -p 11657:11657 \
+  -v /path/to/datasets:/data:ro \
+  ghcr.io/aashishpanta0/nsdf-somospie-dashboard:latest \
+  --args /data/my-dataset/visus.idx
+```
+
+Any other [`panel serve` option](https://panel.holoviz.org/how_to/server/commandline.html)
+is passed through, e.g. `--num-procs 4` or `--prefix /somospie`.
 
 | Environment variable | Default | Meaning |
 | --- | --- | --- |
@@ -61,13 +75,8 @@ services:
     restart: unless-stopped
     ports:
       - "11657:11657"
-    command:
-      - --address
-      - "0.0.0.0"
-      - --port
-      - "11657"
-      - --args
-      - "https://s3.us-east-1.wasabisys.com/scientistcloud/utk/nsdf_somospie/conus_30m_terrain/CONUS_30m_Terrain_Parameters.idx?access_key=Y69B9WJPYXDQBM4DE8LL&secret_key=LJEz1AUsvTW6uNJc67NNgfD3IfNYrIY54zps6PWU&endpoint_url=https://s3.us-east-1.wasabisys.com&cached=arco"
+    # Defaults are saved in the image. To override one, e.g. the dataset:
+    # command: ["--args", "/data/my-dataset/visus.idx"]
     volumes:
       - cache:/var/cache/visus
 
@@ -95,13 +104,8 @@ spec:
       containers:
         - name: somospie
           image: ghcr.io/aashishpanta0/nsdf-somospie-dashboard:latest
-          args:
-            - --address
-            - "0.0.0.0"
-            - --port
-            - "11657"
-            - --args
-            - "https://s3.us-east-1.wasabisys.com/scientistcloud/utk/nsdf_somospie/conus_30m_terrain/CONUS_30m_Terrain_Parameters.idx?access_key=Y69B9WJPYXDQBM4DE8LL&secret_key=LJEz1AUsvTW6uNJc67NNgfD3IfNYrIY54zps6PWU&endpoint_url=https://s3.us-east-1.wasabisys.com&cached=arco"
+          # Defaults are saved in the image; override any of them with args, e.g.
+          # args: ["--port", "11657", "--args", "/data/my-dataset/visus.idx"]
           ports:
             - containerPort: 11657
 ---
@@ -125,26 +129,13 @@ spec:
   one pod.
 - Add probes as you need, e.g. a `tcpSocket` probe on port `11657`.
 
-## Use your own dataset
-
-Pass it after `--args`. For local files, mount their directory at `/data`:
-
-```bash
-docker run -d --name nsdf-somospie -p 11657:11657 \
-  -v /path/to/datasets:/data:ro \
-  ghcr.io/aashishpanta0/nsdf-somospie-dashboard:latest \
-  --address 0.0.0.0 --port 11657 --args /data/my-dataset/visus.idx
-```
-
-`--args` accepts an OpenVisus `.idx` URL or path, or a JSON scene list.
-
 ## Update to the newest image
 
 Docker keeps using the image already on your machine, so pull first:
 
 ```bash
 docker pull ghcr.io/aashishpanta0/nsdf-somospie-dashboard:latest
-docker rm -f nsdf-somospie
+docker rm -f somospie
 ```
 
 Then run the same `docker run` command again. With Compose, run
@@ -153,8 +144,9 @@ of `latest`, use one of the version tags on the [package page](https://github.co
 
 ## Troubleshooting
 
-- **Nothing answers on port 11657**: pass `--address 0.0.0.0 --port 11657`
-  and publish the same port with `-p`. `docker logs nsdf-somospie` should show
+- **Nothing answers on the port**: the port in `-p` must match the port the
+  dashboard listens on (`11657` unless you passed `--port`).
+  `docker logs somospie` shows it, e.g.
   `Bokeh app running at: http://0.0.0.0:11657/somospie`.
 - **Warning: `requested image's platform (linux/amd64) does not match`**:
   harmless on Apple Silicon and other ARM machines. OpenVisus has no Linux ARM
@@ -169,9 +161,9 @@ of `latest`, use one of the version tags on the [package page](https://github.co
 ## For maintainers
 
 [`.github/workflows/docker.yml`](.github/workflows/docker.yml) builds the image,
-starts it with `--address 0.0.0.0 --port 5006` and the default dataset, loads
-the dashboard page, and fails if the dashboard logs an error. Only then is the
-image published:
+starts it twice (with no arguments, and with only `--port`), loads the dashboard
+page each time, and fails if the dashboard logs an error. Only then is the image
+published:
 
 | Event | Published tags |
 | --- | --- |
@@ -188,9 +180,11 @@ To build and run it locally:
 
 ```bash
 docker build --platform linux/amd64 -t nsdf-somospie-dashboard .
-docker run --rm -p 11657:11657 nsdf-somospie-dashboard --address 0.0.0.0 --port 11657 --args 'https://s3.us-east-1.wasabisys.com/scientistcloud/utk/nsdf_somospie/conus_30m_terrain/CONUS_30m_Terrain_Parameters.idx?access_key=Y69B9WJPYXDQBM4DE8LL&secret_key=LJEz1AUsvTW6uNJc67NNgfD3IfNYrIY54zps6PWU&endpoint_url=https://s3.us-east-1.wasabisys.com&cached=arco'
+docker run --rm -p 11657:11657 nsdf-somospie-dashboard
 ```
 
-The image runs this repository's own copy of openvisuspy (from [sci-visus/openvisuspy](https://github.com/sci-visus/openvisuspy/tree/nsdf-ahm), branch `nsdf-ahm`); the
-dashboard itself is in [`src/openvisuspy/dashboards/`](src/openvisuspy/dashboards). For notebooks, local Python installs, and
-other dashboards, see [openvisuspy](https://github.com/sci-visus/openvisuspy).
+The defaults live in the `ENV` block of the [`Dockerfile`](Dockerfile), and
+[`docker-entrypoint.sh`](docker-entrypoint.sh) fills them in. The image runs this
+repository's own copy of openvisuspy (from [sci-visus/openvisuspy](https://github.com/sci-visus/openvisuspy/tree/nsdf-ahm), branch `nsdf-ahm`); the dashboard itself is
+in [`src/openvisuspy/dashboards/`](src/openvisuspy/dashboards). For notebooks, local Python installs, and other dashboards, see
+[openvisuspy](https://github.com/sci-visus/openvisuspy).
