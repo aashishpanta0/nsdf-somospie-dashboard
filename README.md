@@ -155,7 +155,7 @@ After editing `.env`, apply the changes with `docker compose up -d`.
 
 ## Releases
 
-Every push to `main` publishes `:latest` and `:sha-<commit>` through
+Every push to `main` publishes `:latest` through
 [GitHub Actions](.github/workflows/docker.yml). Tagging `vX.Y.Z` also
 publishes `:X.Y.Z`:
 
