@@ -1,18 +1,20 @@
-# NSDF SOMOSPIE Dashboard: run `docker compose up -d`, then open http://localhost:11657/
-# Every setting is optional; see "Configuration" in the README.
+# NSDF SOMOSPIE Dashboard: run `docker compose up -d`, then open http://localhost:11657/somospie
 services:
-  nsdf-somospie:
+  somospie:
     image: ghcr.io/aashishpanta0/nsdf-somospie-dashboard:latest
     platform: linux/amd64
     restart: unless-stopped
     ports:
-      - "11657:8080"
-    environment:
-      BOKEH_ALLOW_WS_ORIGIN: "*"  # on a server, set to the public hostname
-      # DATASET: /data/my-dataset/visus.idx
+      - "11657:11657"
+    command:
+      - --address
+      - "0.0.0.0"
+      - --port
+      - "11657"
+      - --args
+      - "https://s3.us-east-1.wasabisys.com/scientistcloud/utk/nsdf_somospie/conus_30m_terrain/CONUS_30m_Terrain_Parameters.idx?access_key=Y69B9WJPYXDQBM4DE8LL&secret_key=LJEz1AUsvTW6uNJc67NNgfD3IfNYrIY54zps6PWU&endpoint_url=https://s3.us-east-1.wasabisys.com&cached=arco"
     volumes:
       - cache:/var/cache/visus
-      # - ./data:/data:ro
 
 volumes:
   cache:

@@ -1,44 +1,40 @@
-# NSDF SOMOSPIE Dashboard (ghcr.io/aashishpanta0/nsdf-somospie-dashboard).
-# Runtime defaults are the ENV values below; README.md documents how to run it.
+# NSDF SOMOSPIE Dashboard, served as "somospie" (ghcr.io/aashishpanta0/nsdf-somospie-dashboard).
+# The address and port are not baked in; pass them at run time (see README.md):
+#   docker run -p 11657:11657 <image> --address 0.0.0.0 --port 11657 --args <dataset>
 
-FROM python:3.12-slim-bookworm AS builder
+# Build stage: install the Python dependencies into a virtualenv.
+FROM python:3.12-slim-bookworm AS build
 
-# OpenVisus publishes Linux wheels for x86_64 only, so the image is linux/amd64.
+# OpenVisus ships Linux wheels for x86_64 only, so the image is linux/amd64.
+# OpenVisusNoGui is OpenVisus without the Qt viewer, which the dashboard never uses.
 RUN python -m venv /opt/venv \
-    && /opt/venv/bin/python -m pip install --no-cache-dir --no-warn-script-location --only-binary=:all: \
-        bokeh panel ipywidgets OpenVisus ipywidgets_bokeh ipykernel \
-        boto3 xmltodict aiohttp colorcet matplotlib \
-    && /opt/venv/bin/python -m pip uninstall -y pip
+    && /opt/venv/bin/pip install --no-cache-dir --no-warn-script-location --only-binary=:all: \
+        panel bokeh param numpy requests xmltodict colorcet \
+        ipywidgets ipywidgets-bokeh ipykernel OpenVisusNoGui \
+        matplotlib \
+    && /opt/venv/bin/pip uninstall -y pip
 
+# Runtime stage: only the virtualenv and the dashboard code.
 FROM python:3.12-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH=/opt/venv/bin:$PATH \
-    PYTHONPATH=/opt/dashboard/src \
-    VISUS_CACHE=/var/cache/visus \
-    DASHBOARD_APP=/opt/dashboard/somospie \
-    DATASET="https://s3.us-east-1.wasabisys.com/scientistcloud/utk/nsdf_somospie/conus_30m_terrain/CONUS_30m_Terrain_Parameters.idx?access_key=Y69B9WJPYXDQBM4DE8LL&secret_key=LJEz1AUsvTW6uNJc67NNgfD3IfNYrIY54zps6PWU&endpoint_url=https://s3.us-east-1.wasabisys.com&cached=arco" \
-    PORT=8080 \
-    BOKEH_ALLOW_WS_ORIGIN=*
+    PYTHONPATH=/opt/openvisuspy/src \
+    BOKEH_ALLOW_WS_ORIGIN=* \
+    VISUS_CACHE=/var/cache/visus
 
-COPY --from=builder /opt/venv /opt/venv
-COPY src /opt/dashboard/src
-COPY src/openvisuspy/dashboards /opt/dashboard/somospie
-COPY --chmod=0755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --from=build /opt/venv /opt/venv
+COPY src /opt/openvisuspy/src
+COPY src/openvisuspy/dashboards /opt/openvisuspy/somospie
 
-# Fail the build early if the dashboard cannot be imported.
-RUN python -c "import OpenVisus, openvisuspy, panel" \
-    && test -f "$DASHBOARD_APP/main.py" \
+RUN python -c "import OpenVisus, openvisuspy" \
     && useradd --create-home --uid 10001 dashboard \
     && mkdir -p /var/cache/visus /data \
-    && chown dashboard:dashboard /var/cache/visus
+    && chown dashboard:dashboard /var/cache/visus /data
 
-WORKDIR /opt/dashboard
+WORKDIR /opt/openvisuspy
 USER dashboard
-EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/liveness' % os.environ['PORT'], timeout=4)"
-
-ENTRYPOINT ["docker-entrypoint.sh"]
+ENTRYPOINT ["python", "-m", "panel", "serve", "somospie"]
+CMD ["--args", "https://s3.us-east-1.wasabisys.com/scientistcloud/utk/nsdf_somospie/conus_30m_terrain/CONUS_30m_Terrain_Parameters.idx?access_key=Y69B9WJPYXDQBM4DE8LL&secret_key=LJEz1AUsvTW6uNJc67NNgfD3IfNYrIY54zps6PWU&endpoint_url=https://s3.us-east-1.wasabisys.com&cached=arco"]

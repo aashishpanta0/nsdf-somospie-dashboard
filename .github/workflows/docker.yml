@@ -1,8 +1,8 @@
 name: docker
 
-# Builds the image, starts it and loads the dashboard page (which opens the
-# default dataset), and only publishes it to ghcr.io/<owner>/<repo> if that
-# works:
+# Builds the image, starts it the way the README does and loads the dashboard
+# page (which opens the default dataset), and only publishes it to
+# ghcr.io/<owner>/<repo> if that works:
 #   push to main      -> :latest
 #   push tag vX.Y.Z   -> :X.Y.Z
 #   pull request      -> build and test only
@@ -38,14 +38,17 @@ jobs:
 
       - name: Smoke test
         run: |
-          docker run -d --name dashboard -p 8080:8080 dashboard:test
+          # Address and port as arguments, then the image's default dataset (its CMD).
+          mapfile -t dataset_args < <(docker image inspect dashboard:test --format '{{json .Config.Cmd}}' | jq -r '.[]')
+          docker run -d --name dashboard -p 5006:5006 dashboard:test \
+            --address 0.0.0.0 --port 5006 "${dataset_args[@]}"
           trap 'docker logs dashboard' EXIT
           for i in $(seq 1 60); do
-            curl -fs -o /dev/null http://127.0.0.1:8080/liveness && break
+            curl -fs -o /dev/null http://127.0.0.1:5006/ && break
             sleep 2
           done
-          # Loading the page runs the dashboard and opens its default dataset.
-          curl -fsSL -o /dev/null --max-time 180 http://127.0.0.1:8080/
+          # Loading the page runs the dashboard and opens its dataset.
+          curl -fsSL -o /dev/null --max-time 180 http://127.0.0.1:5006/
           sleep 5
           if docker logs dashboard 2>&1 | grep -qE "Traceback|Error running application handler"; then
             echo "::error::The dashboard logged an error"
