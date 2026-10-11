@@ -1,24 +1,18 @@
+# NSDF SOMOSPIE Dashboard: run `docker compose up -d`, then open http://localhost:11657/
+# Every setting is optional; see "Configuration" in the README.
 services:
   nsdf-somospie:
-    platform: ${SOMOSPIE_PLATFORM:-linux/amd64}
-    build: .
-    image: ${SOMOSPIE_IMAGE:-ghcr.io/aashishpanta0/nsdf-somospie-dashboard:latest}
-    init: true
+    image: ghcr.io/aashishpanta0/nsdf-somospie-dashboard:latest
+    platform: linux/amd64
     restart: unless-stopped
     ports:
-      - "${SOMOSPIE_BIND_ADDRESS:-127.0.0.1}:${SOMOSPIE_PORT:-11657}:${SOMOSPIE_PORT:-11657}"
+      - "11657:8080"
     environment:
-      BOKEH_ALLOW_WS_ORIGIN: "${SOMOSPIE_ALLOW_WS_ORIGIN:-*}"
-      VISUS_CACHE: /var/cache/visus
-    command:
-      - --address
-      - "${SOMOSPIE_LISTEN_ADDRESS:-0.0.0.0}"
-      - --port
-      - "${SOMOSPIE_PORT:-11657}"
-      - --args
-      - "${SOMOSPIE_DATASET:?Set SOMOSPIE_DATASET in .env (see .env.example)}"
+      BOKEH_ALLOW_WS_ORIGIN: "*"  # on a server, set to the public hostname
+      # DATASET: /data/my-dataset/visus.idx
     volumes:
-      - nsdf-somospie-cache:/var/cache/visus
+      - cache:/var/cache/visus
+      # - ./data:/data:ro
 
 volumes:
-  nsdf-somospie-cache:
+  cache:
