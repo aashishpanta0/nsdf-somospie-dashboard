@@ -22,8 +22,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH=/opt/venv/bin:$PATH \
     PYTHONPATH=/opt/openvisuspy/src \
     VISUS_CACHE=/var/cache/visus \
-    DASHBOARD_APP=/opt/openvisuspy/somospie-dashboard \
-    DATASET="https://s3.us-east-1.wasabisys.com/scientistcloud/utk/nsdf_somospie/conus_30m_terrain/CONUS_30m_Terrain_Parameters.idx?access_key=Y69B9WJPYXDQBM4DE8LL&secret_key=LJEz1AUsvTW6uNJc67NNgfD3IfNYrIY54zps6PWU&endpoint_url=https://s3.us-east-1.wasabisys.com&cached=arco"
+    DASHBOARD_APP=/opt/openvisuspy/somospie-dashboard 
 
 COPY --from=build /opt/venv /opt/venv
 COPY src /opt/openvisuspy/src
