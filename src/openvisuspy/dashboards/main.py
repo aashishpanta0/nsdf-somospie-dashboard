@@ -1,5 +1,5 @@
 import os, sys
-import argparse,json
+import json
 import panel as pn
 import logging
 import base64,json
@@ -25,8 +25,13 @@ if __name__.startswith('bokeh'):
 	logger=SetupLogger(log_filename=log_filename,logging_level=logging.DEBUG)
 
 	
+	# the dataset to open is chosen with the DATASET environment variable
+	dataset=os.environ.get("DATASET","").strip().strip('"').strip("'")
+	if not dataset:
+		raise Exception("No dataset: set the DATASET environment variable")
+
 	slice = Slice()
-	slice.load(sys.argv[1])
+	slice.load(dataset)
 	
 	query_params=GetQueryParams()
 	if "load" in query_params:

@@ -21,17 +21,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH=/opt/venv/bin:$PATH \
     PYTHONPATH=/opt/openvisuspy/src \
-    BOKEH_ALLOW_WS_ORIGIN=* \
     VISUS_CACHE=/var/cache/visus \
-    DASHBOARD_APP=/opt/openvisuspy/somospie \
-    ADDRESS=0.0.0.0 \
-    PORT=11657 \
+    DASHBOARD_APP=/opt/openvisuspy/somospie-dashboard \
     DATASET="https://s3.us-east-1.wasabisys.com/scientistcloud/utk/nsdf_somospie/conus_30m_terrain/CONUS_30m_Terrain_Parameters.idx?access_key=Y69B9WJPYXDQBM4DE8LL&secret_key=LJEz1AUsvTW6uNJc67NNgfD3IfNYrIY54zps6PWU&endpoint_url=https://s3.us-east-1.wasabisys.com&cached=arco"
 
 COPY --from=build /opt/venv /opt/venv
 COPY src /opt/openvisuspy/src
-COPY src/openvisuspy/dashboards /opt/openvisuspy/somospie
-COPY --chmod=0755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY src/openvisuspy/dashboards /opt/openvisuspy/somospie-dashboard
 
 # The cache is writable by any user, since Kubernetes may run the container
 # under an arbitrary UID.
@@ -44,6 +40,5 @@ RUN python -c "import OpenVisus, openvisuspy" \
 
 WORKDIR /opt/openvisuspy
 USER dashboard
-EXPOSE 11657
 
-ENTRYPOINT ["docker-entrypoint.sh"]
+ENTRYPOINT ["python", "-m", "panel", "serve", "somospie-dashboard"]

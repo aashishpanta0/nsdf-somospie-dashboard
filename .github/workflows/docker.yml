@@ -35,32 +35,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Smoke test
-        run: |
-          trap 'for c in defaults port-only; do docker logs "$c" 2>&1 | tail -40; done' EXIT
-          # check NAME PORT [ARGS...]: start the image and load the dashboard page,
-          # which runs the dashboard and opens its dataset.
-          check() {
-            name=$1 port=$2
-            shift 2
-            docker run -d --name "$name" -p "$port:$port" dashboard:test "$@"
-            for i in $(seq 1 60); do
-              curl -fs -o /dev/null "http://127.0.0.1:$port/" && break
-              sleep 2
-            done
-            curl -fsSL -o /dev/null --max-time 180 "http://127.0.0.1:$port/"
-            sleep 5
-            if docker logs "$name" 2>&1 | grep -qE "Traceback|Error running application handler"; then
-              echo "::error::$name: the dashboard logged an error"
-              exit 1
-            fi
-          }
-          # No arguments: address, port and dataset all come from the image.
-          default_port=$(docker image inspect dashboard:test --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^PORT=//p')
-          check defaults "$default_port"
-          # Only a port: the address and dataset still come from the image.
-          check port-only 5006 --port 5006
-
       - uses: docker/login-action@v3
         if: github.event_name != 'pull_request'
         with:

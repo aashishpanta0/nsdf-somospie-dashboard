@@ -1,13 +1,15 @@
 # NSDF SOMOSPIE Dashboard: run `docker compose up -d`, then open http://localhost:11657/somospie
 services:
   somospie:
-    image: ghcr.io/aashishpanta0/nsdf-somospie-dashboard:latest
+    container_name: somospie-dashboard
+    image: somospie-dashboard
     platform: linux/amd64
     restart: unless-stopped
+    env_file: ".env"
     ports:
-      - "11657:11657"
+      - "127.0.0.1:8080:8080"
     # Defaults are saved in the image. To override one, e.g. the dataset:
-    # command: ["--args", "/data/my-dataset/visus.idx"]
+    # command: ["--args", "mock"]
     volumes:
       - cache:/var/cache/visus
 
